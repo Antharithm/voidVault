@@ -1,0 +1,18 @@
+{
+  "name": "voidvault",
+  "version": "1.0.0",
+  "description": "Send unused ERC20 tokens to this void vault. Clean out your main wallets. Withdraw them needed.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.21.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
