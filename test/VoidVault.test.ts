@@ -17,7 +17,7 @@ describe("VoidVault", function () {
   before(async function () {
     const VoidVault = await ethers.getContractFactory("VoidVault");
     voidVault = await VoidVault.deploy();
-    console.log(`VoidVault was deployed to: ${voidVault.address}`);
+    console.log(`VoidVault was deployed to: ${voidVault.target}`);
 
     [owner, depositor1, depositor2] = await ethers.getSigners();
     console.log("Owner Address: ", owner.address);
@@ -25,7 +25,7 @@ describe("VoidVault", function () {
     console.log("addr2 Address: ", depositor2.address);
   });
 
-  describe("Deposits", function () {
+  describe("Vault Deposits:", function () {
     it("Should let any address deposit ETH into the Vault", async function () {
       const depositAmount = ethers.parseEther("1");
       console.log("Deposit Amount: ", ethers.formatEther(depositAmount));
