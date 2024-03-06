@@ -5,7 +5,7 @@ async function main() {
 
   await voidVault.waitForDeployment();
 
-  console.log(`VoidVault was deployed to: ${voidVault.address}`);
+  console.log(`VoidVault was deployed to: ${voidVault.target}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
