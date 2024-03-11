@@ -1,16 +1,20 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const voidVault = await ethers.deployContract("VoidVault");
+  const [initialOwner] = await ethers.getSigners();
 
-  await voidVault.waitForDeployment();
+  console.log("Deploying and initialize Vault owner:", initialOwner.address);
+  // console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  console.log(`VoidVault was deployed to: ${voidVault.target}`);
+  const VoidVault = await ethers.getContractFactory("VoidVault");
+  const voidVault = await VoidVault.deploy(initialOwner.address);
+
+  // await voidVault.deployed();
+
+  console.log("VoidVault deployed to:", voidVault.target);
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });
