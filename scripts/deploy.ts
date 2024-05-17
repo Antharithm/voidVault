@@ -9,8 +9,6 @@ async function main() {
   const VoidVault = await ethers.getContractFactory("VoidVault");
   const voidVault = await VoidVault.deploy(initialOwner.address);
 
-  // await voidVault.deployed();
-
   console.log("VoidVault deployed to:", voidVault.target);
 }
 

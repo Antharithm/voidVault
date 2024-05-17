@@ -1,72 +1,106 @@
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 describe("VoidVault", function () {
-  const ONE_ETH = ethers.parseEther("1");
-  const TWO_ETH = ethers.parseEther("2");
-  const TEN_ETH = ethers.parseEther("10");
+  async function deployVaultFixture() {
+    const [owner, depositor1] = await ethers.getSigners();
 
-  // Contracts
-  let voidVault: any;
-
-  // Addresses
-  let owner: any; // initialOwner
-  let depositor1: any;
-  let depositor2: any;
-
-  beforeEach(async function () {
+    // Deploy VoidVault
     const VoidVault = await ethers.getContractFactory("VoidVault");
-    voidVault = await VoidVault.deploy(owner.address);
-    console.log(`VoidVault was deployed to: ${voidVault.target}`);
+    const voidVault = await VoidVault.deploy();
 
-    [owner, depositor1, depositor2] = await ethers.getSigners();
-    console.log("Owner Address: ", owner.address);
-    console.log("Depositor1 Address: ", depositor1.address);
-    console.log("Depositor2 Address: ", depositor2.address);
+    // Deploy MockERC20 token
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const mockERC20 = await MockERC20.deploy("MockToken", "MTK");
+
+    // Mint some tokens to depositor1 for testing
+    const mintAmount = ethers.parseEther("1000"); // 1000 MockToken
+    await mockERC20.mint(depositor1.address, mintAmount);
+
+    return { voidVault, mockERC20, owner, depositor1 };
+  }
+
+  describe("ETH deposits", function () {
+    // Existing test case for depositing ETH
   });
 
-  // describe("Vault Deposits:", function () {
-  //   it("Should let any address deposit 1 ETH into the Vault", async function () {
-  //     console.log("Deposit Amount: ", ethers.formatEther(ONE_ETH));
+  // Additional test cases for ERC20 deposits and withdrawals
+  describe("ERC20 deposits", function () {
+    it("should allow depositing ERC20 tokens into the vault", async function () {
+      const { voidVault, mockERC20, depositor1 } = await loadFixture(
+        deployVaultFixture
+      );
+      const depositAmount = ethers.parseEther("50"); // 50 MockToken
 
-  //     await voidVault.connect(depositor1).deposit({ value: ONE_ETH });
+      // Approve the vault to spend depositor's tokens
+      await mockERC20
+        .connect(depositor1)
+        .approve(voidVault.address, depositAmount);
 
-  //     // Check the balance of the Vault
-  //     const balance = await ethers.provider.getBalance(voidVault.target);
-  //     expect(balance).to.equal(ONE_ETH);
-  //     console.log("Vault Balance: ", ethers.formatEther(balance));
-  //   });
-  // });
+      // Depositor deposits ERC20 tokens into the vault
+      await expect(
+        voidVault
+          .connect(depositor1)
+          .depositERC20(mockERC20.address, depositAmount)
+      )
+        .to.emit(voidVault, "DepositERC20")
+        .withArgs(depositor1.address, mockERC20.address, depositAmount);
 
-  // describe("Vault Withdraws", function () {
-  //   it("Should only allow the owner to withdraw from the Vault", async function () {
-  //     console.log("Deposit Amount: ", ethers.formatEther(ONE_ETH));
+      // Validate the token balance of the vault
+      const vaultTokenBalance = await mockERC20.balanceOf(voidVault.address);
+      expect(vaultTokenBalance).to.equal(depositAmount);
+    });
+  });
 
-  //     await voidVault.connect(depositor1).deposit({ value: ONE_ETH });
+  describe("Ownership", function () {
+    it("should allow the initial owner to transfer ownership", async function () {
+      const { voidVault, owner, depositor1 } = await loadFixture(
+        deployVaultFixture
+      );
 
-  //     const balance = await ethers.provider.getBalance(voidVault.target);
-  //     expect(balance).to.equal(ONE_ETH);
-  //     console.log("Vault Balance: ", ethers.formatEther(balance));
+      // Transfer ownership to depositor1
+      await expect(
+        voidVault.connect(owner).transferOwnership(depositor1.address)
+      )
+        .to.emit(voidVault, "OwnershipTransferred")
+        .withArgs(owner.address, depositor1.address);
 
-  //     const withdrawAmount = ethers.parseEther("0.5");
-  //     await expect(voidVault.connect(owner).withdraw(withdrawAmount))
-  //       .to.emit(voidVault, "WithdrawalMade")
-  //       .withArgs(owner.address, withdrawAmount)
-  //       .then(() =>
-  //         console.log(
-  //           "Owner = Withdrawal successful: WithdrawalMade event emitted."
-  //         )
-  //       );
+      // Validate the new owner
+      expect(await voidVault.owner()).to.equal(depositor1.address);
+    });
 
-  //     await expect(voidVault.connect(depositor1).withdraw(withdrawAmount))
-  //       .to.be.revertedWith("You are not the owner of this wallet.")
-  //       .then(() =>
-  //         console.log(
-  //           "Non Owner = Withdrawal failed: You are not the owner of the Vault."
-  //         )
-  //       );
+    it("should not allow the initial owner to transfer ownership again after the first transfer", async function () {
+      const { voidVault, owner, depositor1 } = await loadFixture(
+        deployVaultFixture
+      );
 
-  //     console.log("Vault Balance: ", ethers.formatEther(balance));
-  //   });
-  // });
+      // Transfer ownership to depositor1
+      await voidVault.connect(owner).transferOwnership(depositor1.address);
+
+      // Try to transfer ownership again as the initial owner
+      await expect(
+        voidVault.connect(owner).transferOwnership(owner.address)
+      ).to.be.revertedWith("Caller cannot transfer ownership");
+    });
+
+    it("should allow the new owner to transfer ownership", async function () {
+      const { voidVault, owner, depositor1 } = await loadFixture(
+        deployVaultFixture
+      );
+
+      // Transfer ownership to depositor1
+      await voidVault.connect(owner).transferOwnership(depositor1.address);
+
+      // Transfer ownership back to owner
+      await expect(
+        voidVault.connect(depositor1).transferOwnership(owner.address)
+      )
+        .to.emit(voidVault, "OwnershipTransferred")
+        .withArgs(depositor1.address, owner.address);
+
+      // Validate the new owner
+      expect(await voidVault.owner()).to.equal(owner.address);
+    });
+  });
 });
